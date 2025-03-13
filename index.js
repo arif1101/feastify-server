@@ -28,10 +28,24 @@ async function run() {
     await client.connect();
 
     const menuCollection = client.db('Festify').collection('menu');
+    const cartCollection = client.db('Festify').collection('carts');
 
     app.get('/menu', async(req, res) => {
         const result = await menuCollection.find().toArray();
         res.send(result)
+    })
+
+    app.get('/carts', async(req, res) => {
+      const email = req.query.email
+      const query = {email: email}
+      const result = await cartCollection.find(query).toArray();
+      res.send(result)
+    })
+
+    app.post('/carts', async(req, res) => {
+      const cartItem = req.body;
+      const result = await cartCollection.insertOne(cartItem);
+      res.send(result);
     })
     
     // Send a ping to confirm a successful connection
