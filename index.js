@@ -27,9 +27,24 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
+    const userCollection = client.db('Festify').collection('users');
     const menuCollection = client.db('Festify').collection('menu');
     const cartCollection = client.db('Festify').collection('carts');
 
+    // user API 
+    app.post('/users', async(req,res)=> {
+      const user = req.body;
+      // insert email if user doesen't exit 
+      // there is three way to do 1.email unique, 2.upsert 3.simple checking
+      const query = {email: user.email}
+      const existingUser = await userCollection.findOne(query)
+      if(existingUser){
+        return res.send({message: 'user already exist', insertedId:null})
+      }
+      const result = await userCollection.insertOne(user)
+      res.send(result)
+    })
+    // user API end 
     app.get('/menu', async(req, res) => {
         const result = await menuCollection.find().toArray();
         res.send(result)
