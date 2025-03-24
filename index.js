@@ -32,6 +32,11 @@ async function run() {
     const cartCollection = client.db('Festify').collection('carts');
 
     // user API 
+    app.get('/users', async(req,res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    }); 
+    
     app.post('/users', async(req,res)=> {
       const user = req.body;
       // insert email if user doesen't exit 
@@ -79,9 +84,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-
-
 
 app.get('/', (req, res) => {
     res.send('boss is sitting')
