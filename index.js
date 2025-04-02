@@ -1,6 +1,7 @@
 const express = require('express')
 const app = express()
 const cors = require('cors')
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 
@@ -30,6 +31,15 @@ async function run() {
     const userCollection = client.db('Festify').collection('users');
     const menuCollection = client.db('Festify').collection('menu');
     const cartCollection = client.db('Festify').collection('carts');
+
+    // jwt related 
+    app.post('/jwt', async(req,res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET,{
+        expiresIn: '1h'
+      })
+      res.send({token})
+    })
 
     // user API 
     app.get('/users', async(req,res) => {
