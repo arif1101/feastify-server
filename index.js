@@ -41,20 +41,27 @@ async function run() {
       res.send({token})
     })
 
-    const verifyToken = (req,res,next) => {
-      console.log('inside verify token', req.headers)
-      if(!req.headers.authorization){
-        return res.status(401).send({message: 'forbidden access'});
+    const verifyToken = (req, res, next) => {
+      console.log("Inside verify token", req.headers);
+  
+      if (!req.headers.authorization) {
+          return res.status(401).json({ message: "No token provided, forbidden access" });
       }
-      const token = req.headers.authorization
+  
+      const token = req.headers.authorization.split(" ")[1]; // Extract token from "Bearer <token>"
+  
+      if (!token) {
+          return res.status(401).json({ message: "Invalid token format, forbidden access" });
+      }
+  
       jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-        if(err){
-          return res.status(401).send({message: "forbidden access"})
-        }
-        req.decoded=decoded;
-        next();
-      })
-    }
+          if (err) {
+              return res.status(403).json({ message: "Invalid or expired token, access denied" });
+          }
+          req.decoded = decoded;
+          next();
+      });
+  };
 
     // user API 
     app.get('/users',verifyToken , async(req,res) => {
@@ -93,6 +100,25 @@ async function run() {
       const result = await userCollection.updateOne(filter,updatedDoc)
       res.send(result)
     })
+
+    app.get("/user/admin/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+  
+      if (email !== req.decoded.email) {
+          return res.status(403).json({ message: "Unauthorized access" });
+      }
+  
+      try {
+          const query = { email };
+          const user = await userCollection.findOne(query);
+  
+          const admin = user?.role === "admin";
+          res.json({ admin });
+      } catch (error) {
+          console.error("Error checking admin status:", error);
+          res.status(500).json({ message: "Internal server error" });
+      }
+  });
     
     // end user API 
     app.get('/menu', async(req, res) => {
