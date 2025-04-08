@@ -93,14 +93,14 @@ async function run() {
       res.send(result)
     })
 
-    app.delete('/users/:id', async(req,res) => {
+    app.delete('/users/:id',verifyToken, verifyAdmin, async(req,res) => {
       const id = req.params.id;
       const query = {_id: new ObjectId(id)}
       const result = await userCollection.deleteOne(query);
       res.send(result)
     })
 
-    app.patch('/users/admin/:id', async(req,res) => {
+    app.patch('/users/admin/:id',verifyToken, verifyAdmin, async(req,res) => {
       const id = req.params.id;
       const filter = {_id: new ObjectId(id)};
       const updatedDoc = {
@@ -135,6 +135,12 @@ async function run() {
     app.get('/menu', async(req, res) => {
         const result = await menuCollection.find().toArray();
         res.send(result)
+    })
+    
+    app.post('/menu', async (req, res) => {
+      const item = req.body;
+      const result = await menuCollection.insertOne(item)
+      res.send(result)
     })
 
     app.get('/carts', async(req, res) => {
