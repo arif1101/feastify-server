@@ -32,6 +32,7 @@ async function run() {
     const userCollection = client.db('Festify').collection('users');
     const menuCollection = client.db('Festify').collection('menu');
     const cartCollection = client.db('Festify').collection('carts');
+    const paymentCollection = client.db('Festify').collection('payments');
 
     // jwt related 
     app.post('/jwt', async(req,res) => {
@@ -216,8 +217,23 @@ async function run() {
         clientSecret: paymentIntent.client_secret
       })
     })
+
+    app.post('/payment', async(req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment)
+
+      // carefully delete each item from the cart
+      console.log('this is payment info : ',payment)
+      const query= {_id: {
+        $in: payment.cartIds.map(id => new ObjectId(id))
+      }};
+      const deleteResult = await cartCollection.deleteMany(query);
+      res.send({paymentResult,deleteResult})
+    })
+
+
     
-    // Send a ping to confirm a successful connection
+    // Send a ping to confirm a successful connections
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
