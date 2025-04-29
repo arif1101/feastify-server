@@ -27,7 +27,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const userCollection = client.db('Festify').collection('users');
     const menuCollection = client.db('Festify').collection('menu');
@@ -77,6 +77,18 @@ async function run() {
     }
 
     // user API 
+
+    app.get('/user', async (req, res) => {
+      const email = req.query.email
+      const user = await userCollection.findOne({email: email});
+      if(user){
+        res.send(user)
+      }
+      else{
+        res.status(404).send({message: 'user not found'})
+      }
+    })
+    
     app.get('/users',verifyToken, verifyAdmin, async(req,res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
@@ -243,10 +255,89 @@ async function run() {
     })
 
 
+    app.get('/admin-stats', async(req, res) => {
+      const users = await userCollection.estimatedDocumentCount();
+      const menuItems = await menuCollection.estimatedDocumentCount();
+      const orders = await paymentCollection.estimatedDocumentCount();
+
+      const result = await paymentCollection.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalRevenue: {
+              $sum: '$price'
+            }
+          }
+        }
+      ]).toArray();
+      
+      const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+      res.send({
+        users,
+        menuItems,
+        orders,
+        revenue
+      })
+
+    })
+
+    const { ObjectId } = require('mongodb');
+
+    app.get('/order-stats',verifyToken, verifyAdmin, async (req, res) => {
+      try {
+        const result = await paymentCollection.aggregate([
+          {
+            $addFields: {
+              menuItemObjectIds: {
+                $map: {
+                  input: '$menuItemIds',
+                  as: 'id',
+                  in: { $toObjectId: '$$id' }
+                }
+              }
+            }
+          },
+          { $unwind: '$menuItemObjectIds' },
+          {
+            $lookup: {
+              from: 'menu',
+              localField: 'menuItemObjectIds',
+              foreignField: '_id',
+              as: 'menuItem'
+            }
+          },
+          { $unwind: '$menuItem' },
+          {
+            $group: {
+              _id: '$menuItem.category',
+              quantity: { $sum: 1 },
+              revenue: { $sum: '$menuItem.price' }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              category: '$_id',
+              quantity: '$quantity',
+              revenue: '$revenue',
+            }
+          }
+        ]).toArray();
+    
+        res.send(result);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ error: 'Failed to fetch order stats' });
+      }
+    });
+    
+
+
     
     // Send a ping to confirm a successful connections
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
